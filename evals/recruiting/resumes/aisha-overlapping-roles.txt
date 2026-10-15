@@ -1,0 +1,17 @@
+AISHA RAHMAN — Backend Engineer
+Singapore · aisha.r@email.com · github.com/aisharahman
+
+EXPERIENCE
+
+Freelance Backend Developer (part-time)          Jan 2022 – Present
+  Build Go microservices and gRPC APIs for 4 startup clients; set up Kubernetes deployments.
+
+Backend Engineer, Cloudnine Systems              Mar 2020 – Feb 2024
+  Owned the payments service (Go, PostgreSQL). Cut p99 latency by 45%.
+  Migrated services from VMs to Kubernetes. On-call lead for platform team.
+
+EDUCATION
+B.Eng. Computer Engineering, Nanyang Technological University, 2019
+
+SKILLS
+Go, gRPC, Kubernetes, PostgreSQL, Redis, Terraform, AWS

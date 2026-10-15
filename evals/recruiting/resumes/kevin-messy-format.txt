@@ -1,0 +1,5 @@
+kevin lopez | kevin.lopez@mail.com | manila
+2023 - now   lead frontend engineer @ shopnest — lead team of 6, rebuilt storefront in next.js + react, core web vitals all green
+2018 - 2023  frontend dev @ pixelhouse — react & vue apps for agency clients, design systems, css/sass
+school: ateneo de manila, bs computer science 2017
+tools: react, nextjs, vue, typescript, tailwind, figma, jest

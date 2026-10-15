@@ -1,0 +1,21 @@
+Juan dela Cruz
+Cebu City | juan.delacruz@email.com | 0918 555 0199
+
+OBJECTIVE
+Fresh Computer Science graduate seeking a junior backend developer role.
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of San Carlos — Graduated June 2026, Cum Laude
+Thesis: Django-based barangay records management system
+
+INTERNSHIP
+Software Engineering Intern, Island Logic Inc. (June 2025 – August 2025)
+- Wrote Python scripts to clean customer data
+- Added REST endpoints to an internal Django app; wrote unit tests
+
+PROJECTS
+- Personal budget tracker (Python, Django, SQLite)
+
+SKILLS
+Python, Django, SQL, Git, HTML/CSS

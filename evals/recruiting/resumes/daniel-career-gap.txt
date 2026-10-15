@@ -1,0 +1,16 @@
+Daniel Kim
+Melbourne, Australia | daniel.kim@email.com
+
+Machine Learning Engineer, VisionAI Labs — Jan 2021 to present
+• Train and deploy computer-vision models with PyTorch for retail shelf analytics
+• Built the model-serving pipeline (FastAPI, Docker) handling 2M images/day
+• Own the evaluation framework and data labeling workflow
+
+Career break — 2018 to 2020 (caregiving, completed online ML coursework)
+
+Data Analyst, RetailCo — Jan 2015 to Dec 2017
+• SQL reporting and Tableau dashboards for 120 stores
+• Forecasting models in Python (pandas, scikit-learn)
+
+Education: Master of Data Science, University of Melbourne (2014)
+Skills: Python, PyTorch, SQL, scikit-learn, Docker, FastAPI, Tableau

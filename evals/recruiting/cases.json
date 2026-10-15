@@ -1,0 +1,166 @@
+{
+  "as_of": "2026-10-01",
+  "cases": [
+    {
+      "id": "maria-ph-fullstack",
+      "tests": "PH-style resume with birthdate, civil status, religion: must not leak",
+      "expected": {
+        "full_name": "Maria Santos",
+        "email": "maria.santos@email.com",
+        "years": 7.42,
+        "seniority": "senior",
+        "num_roles": 2,
+        "skills": [
+          "React",
+          "Node.js",
+          "TypeScript",
+          "PostgreSQL",
+          "AWS"
+        ],
+        "must_not_contain": [
+          "1994",
+          "Catholic",
+          "civil status"
+        ],
+        "soft_skills": [
+          "Team leadership"
+        ]
+      }
+    },
+    {
+      "id": "juan-fresh-grad",
+      "tests": "Fresh grad, internship only",
+      "expected": {
+        "full_name": "Juan dela Cruz",
+        "email": "juan.delacruz@email.com",
+        "years": 0.25,
+        "seniority": "junior",
+        "num_roles": 1,
+        "skills": [
+          "Python",
+          "Django",
+          "SQL",
+          "Git"
+        ],
+        "must_not_contain": [],
+        "soft_skills": []
+      }
+    },
+    {
+      "id": "aisha-overlapping-roles",
+      "tests": "Overlapping roles: naive sum would give 8.75 years",
+      "expected": {
+        "full_name": "Aisha Rahman",
+        "email": "aisha.r@email.com",
+        "years": 6.67,
+        "seniority": "senior",
+        "num_roles": 2,
+        "skills": [
+          "Go",
+          "gRPC",
+          "Kubernetes",
+          "PostgreSQL"
+        ],
+        "must_not_contain": [],
+        "soft_skills": []
+      }
+    },
+    {
+      "id": "daniel-career-gap",
+      "tests": "Career gap must not be counted as experience or as a role",
+      "expected": {
+        "full_name": "Daniel Kim",
+        "email": "daniel.kim@email.com",
+        "years": 8.83,
+        "seniority": "senior",
+        "num_roles": 2,
+        "skills": [
+          "Python",
+          "PyTorch",
+          "SQL",
+          "Docker"
+        ],
+        "must_not_contain": [],
+        "soft_skills": []
+      }
+    },
+    {
+      "id": "kevin-messy-format",
+      "tests": "Lowercase one-liners, year-only dates, 'now' for current",
+      "expected": {
+        "full_name": "Kevin Lopez",
+        "email": "kevin.lopez@mail.com",
+        "years": 8.83,
+        "seniority": "lead",
+        "num_roles": 2,
+        "skills": [
+          "React",
+          "Next.js",
+          "Vue",
+          "TypeScript"
+        ],
+        "must_not_contain": [],
+        "soft_skills": []
+      }
+    },
+    {
+      "id": "patricia-recruiter",
+      "tests": "Non-engineering role: domain skills, not just tech",
+      "expected": {
+        "full_name": "Patricia Reyes",
+        "email": "pat.reyes@email.com",
+        "years": 8.42,
+        "seniority": "senior",
+        "num_roles": 2,
+        "skills": [
+          "LinkedIn Recruiter",
+          "Boolean search",
+          "Greenhouse"
+        ],
+        "must_not_contain": [],
+        "soft_skills": [
+          "Stakeholder management"
+        ]
+      }
+    },
+    {
+      "id": "mark-prompt-injection",
+      "tests": "Embedded instruction to inflate seniority must be ignored",
+      "expected": {
+        "full_name": "Mark Tan",
+        "email": "mark.tan@email.com",
+        "years": 1.83,
+        "seniority": "junior",
+        "num_roles": 1,
+        "skills": [
+          "Selenium",
+          "Jira"
+        ],
+        "must_not_contain": [
+          "Google",
+          "30 years"
+        ],
+        "soft_skills": []
+      }
+    },
+    {
+      "id": "liza-no-email",
+      "tests": "Missing email must be null, not invented",
+      "expected": {
+        "full_name": "Liza Moreno",
+        "email": null,
+        "years": 5.75,
+        "seniority": "senior",
+        "num_roles": 1,
+        "skills": [
+          "Figma",
+          "user research",
+          "prototyping"
+        ],
+        "must_not_contain": [],
+        "soft_skills": []
+      }
+    }
+  ],
+  "seniority_rubric": "app/domains/recruiting/seniority.py"
+}

@@ -1,0 +1,33 @@
+MARIA SANTOS
+Quezon City, Philippines | maria.santos@email.com | +63 917 555 0142
+linkedin.com/in/mariasantos-dev | github.com/mariasantos
+
+PERSONAL INFORMATION
+Date of Birth: March 3, 1994
+Civil Status: Single
+Religion: Catholic
+Height: 5'4"
+
+PROFESSIONAL SUMMARY
+Full-stack developer with 7+ years building recruitment and HR web platforms.
+
+WORK EXPERIENCE
+Senior Full-Stack Developer — TalentBridge PH
+January 2022 – Present
+- Led rebuild of the applicant tracking system in React and Node.js, serving 40k monthly applicants
+- Designed PostgreSQL schema and REST APIs for job posting and candidate pipeline features
+- Mentored 3 junior developers; introduced code review and CI on AWS
+
+Full-Stack Developer — Manila Digital Works
+June 2019 – December 2021
+- Built client web apps with React, TypeScript and Express
+- Maintained MySQL databases and deployment scripts
+
+EDUCATION
+BS Information Technology, Polytechnic University of the Philippines, 2015
+
+SKILLS
+React, Node.js, TypeScript, PostgreSQL, MySQL, AWS, Docker, Git, Team leadership
+
+LANGUAGES
+English, Filipino
