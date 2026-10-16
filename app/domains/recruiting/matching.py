@@ -12,6 +12,7 @@ from app.domains.recruiting.schemas import (
     CandidateMatch,
     JobRequirements,
     ParsedResume,
+    SemanticEvidence,
 )
 from app.domains.recruiting.skills import candidate_skill_keys, has_skill
 
@@ -29,13 +30,30 @@ def _seniority_fit(candidate: str, target: str) -> float:
     return 0.0
 
 
-def score_candidate(candidate_id: str, resume: ParsedResume, job: JobRequirements) -> CandidateMatch:
+def score_candidate(
+    candidate_id: str,
+    resume: ParsedResume,
+    job: JobRequirements,
+    suggestions: dict[str, str] | None = None,
+) -> CandidateMatch:
+    """suggestions: {skill: resume phrase} from semantic.py, attached for recruiter review.
+
+    Suggestions never change the score. In evals, LLM verification of semantic matches gave
+    different verdicts for the same resume across runs, so counting them made scores
+    inconsistent (fairness check fell from 100% to 67%).
+    """
     profile = resume.profile
     keys = candidate_skill_keys(profile)
     matched_must = [s for s in job.must_have_skills if has_skill(profile, s, keys)]
     missing_must = [s for s in job.must_have_skills if s not in matched_must]
     matched_nice = [s for s in job.nice_to_have_skills if has_skill(profile, s, keys)]
     years = resume.total_years_experience
+    unmatched = missing_must + [s for s in job.nice_to_have_skills if s not in matched_nice]
+    suggested = [
+        SemanticEvidence(skill=s, evidence=(suggestions or {})[s])
+        for s in unmatched
+        if s in (suggestions or {})
+    ]
 
     components: dict[str, float] = {}
     reasons: list[str] = []
@@ -77,6 +95,9 @@ def score_candidate(candidate_id: str, resume: ParsedResume, job: JobRequirement
         if matched_nice:
             reasons.append(f"Nice-to-haves: {', '.join(matched_nice)}.")
 
+    for s in suggested:
+        reasons.append(f"Review: may have {s.skill!r} (via {s.evidence!r}); not scored.")
+
     total_weight = sum(WEIGHTS[name] for name in components)
     score = (
         round(100 * sum(WEIGHTS[name] * value for name, value in components.items()) / total_weight)
@@ -92,6 +113,7 @@ def score_candidate(candidate_id: str, resume: ParsedResume, job: JobRequirement
         matched_must_haves=matched_must,
         missing_must_haves=missing_must,
         matched_nice_to_haves=matched_nice,
+        suggested_matches=suggested,
         total_years_experience=years,
         seniority=resume.seniority,
         reasons=reasons,

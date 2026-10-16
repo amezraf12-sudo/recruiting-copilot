@@ -69,6 +69,20 @@
       "must_not_flag": [
         "night shift"
       ]
+    },
+    {
+      "id": "hr-tech-fullstack",
+      "expected_must_haves": [
+        "React",
+        "Node.js"
+      ],
+      "relevance": {
+        "maria-ph-fullstack": 2,
+        "kevin-messy-format": 1
+      },
+      "expected_flag_terms": [],
+      "must_not_flag": [],
+      "note": "Maria's resume never says 'HR software' verbatim; only semantic matching can credit it."
     }
   ],
   "fairness": {

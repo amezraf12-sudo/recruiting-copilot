@@ -57,6 +57,21 @@ def _mentioned_in(text: str, skill: str) -> bool:
     return re.search(rf"(?<![a-z0-9]){re.escape(skill.lower())}(?![a-z0-9])", text) is not None
 
 
+def candidate_phrases(profile: ResumeExtraction) -> list[str]:
+    """Everything a skill could be demonstrated by: skills, headline, titles, highlights."""
+    phrases = (
+        profile.technical_skills + profile.soft_skills + [profile.headline]
+        + [p.title for p in profile.experience]
+        + [h for p in profile.experience for h in p.highlights]
+    )
+    return list(dict.fromkeys(p.strip() for p in phrases if p and p.strip()))
+
+
+def exact_match(skill: str, phrase: str) -> bool:
+    """Same skill by canonical key, or the skill named as a whole word inside the phrase."""
+    return skill_key(skill) == skill_key(phrase) or _mentioned_in(phrase.lower(), skill)
+
+
 def has_skill(profile: ResumeExtraction, skill: str, keys: set[str] | None = None) -> bool:
     """True if the skill is in the profile's skill lists or named in its experience."""
     keys = candidate_skill_keys(profile) if keys is None else keys

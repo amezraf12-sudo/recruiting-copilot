@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.deps import get_extractor
+from app.core.deps import get_embedder, get_extractor
 from app.core.errors import LLMRefusalError
 from app.core.llm import ExtractionResult
 from app.core.rate_limit import RateLimiter, get_limiter
@@ -201,6 +201,16 @@ def test_screen_reports_a_failed_resume_without_failing_the_rest(client_with):
     data = client_with(fake).post("/recruiting/screen", json=body).json()
     assert [m["candidate_id"] for m in data["ranking"]] == ["good"]
     assert data["errors"] == [{"candidate_id": "bad", "error": "No valid output."}]
+
+
+def test_screen_with_semantic_matching_charges_verification_calls(client_with):
+    fake = FakeExtractor()
+    client = client_with(fake, RateLimiter(per_ip_per_hour=6, global_per_day=100))
+    app.dependency_overrides[get_embedder] = lambda: object()  # "enabled"; never reached
+    body = {"job_description": JOB_TEXT, "candidates": [
+        {"id": f"c{i}", "text": RESUME_TEXT} for i in range(3)]}  # 1 + 2*3 = 7 > 6
+    assert client.post("/recruiting/screen", json=body).status_code == 429
+    assert fake.calls == []
 
 
 def test_screen_charges_one_call_per_resume_plus_job(client_with):

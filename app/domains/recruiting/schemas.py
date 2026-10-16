@@ -175,6 +175,11 @@ class ParsedResume(BaseModel):
     usage: UsageInfo
 
 
+class SemanticEvidence(BaseModel):
+    skill: str
+    evidence: str = Field(description="Resume phrase that demonstrates the skill.")
+
+
 class CandidateMatch(BaseModel):
     candidate_id: str
     full_name: str | None
@@ -183,6 +188,10 @@ class CandidateMatch(BaseModel):
     matched_must_haves: list[str]
     missing_must_haves: list[str]
     matched_nice_to_haves: list[str]
+    suggested_matches: list[SemanticEvidence] = Field(
+        description="Missing skills the candidate may have under different wording, found by "
+        "meaning (embeddings + LLM check). For recruiter review; never counted in the score."
+    )
     total_years_experience: float
     seniority: Seniority
     reasons: list[str] = Field(description="Human-readable explanation of the score.")
@@ -197,6 +206,7 @@ class ScreenUsage(BaseModel):
     llm_calls: int
     input_tokens: int
     output_tokens: int
+    embedding_tokens: int
     latency_ms: int
 
 

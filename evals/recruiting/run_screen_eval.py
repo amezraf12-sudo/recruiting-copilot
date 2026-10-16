@@ -15,8 +15,10 @@ from datetime import date, datetime
 from pathlib import Path
 
 from app import config
+from app.core.embeddings import Embedder
 from app.core.llm import create_extractor
 from app.domains.recruiting.matching import rank, score_candidate
+from app.domains.recruiting.semantic import find_semantic_matches
 from app.domains.recruiting.service import parse_job, parse_resume
 from app.domains.recruiting.skills import skill_key
 
@@ -33,7 +35,7 @@ def ndcg(ranked_ids: list[str], relevance: dict[str, int], k: int) -> float:
     return dcg([relevance.get(c, 0) for c in ranked_ids]) / ideal if ideal else 1.0
 
 
-async def run_once(extractor, spec: dict) -> dict:
+async def run_once(extractor, spec: dict, embedder: Embedder | None) -> dict:
     as_of = date.fromisoformat(spec["as_of"])
     sem = asyncio.Semaphore(4)
 
@@ -63,13 +65,32 @@ async def run_once(extractor, spec: dict) -> dict:
     resumes = dict(zip(resume_ids, parsed[len(job_ids): len(job_ids) + len(resume_ids)]))
     variants = dict(zip(variant_ids, parsed[len(job_ids) + len(resume_ids):]))
 
+    usages = [p.usage for p in parsed]
+    embedding_tokens = 0
+
+    async def semantic_for(req, pool: dict) -> dict:
+        """Same semantic pass the /screen endpoint runs; {} when disabled."""
+        nonlocal embedding_tokens
+        if embedder is None:
+            return {}
+        result = await find_semantic_matches(embedder, extractor, req, pool)
+        usages.extend(result.llm_usages)
+        embedding_tokens += result.embedding_tokens
+        return result.matches
+
     per_job = []
     for case in spec["jobs"]:
         req = jobs[case["id"]].requirements
-        ranking = rank([score_candidate(rid, resumes[rid], req) for rid in resume_ids])
+        semantic = await semantic_for(req, resumes)
+        ranking = rank([score_candidate(rid, resumes[rid], req, semantic.get(rid)) for rid in resume_ids])
         ranked_ids = [m.candidate_id for m in ranking]
         relevance = case["relevance"]
         strong = {c for c, g in relevance.items() if g == 2}
+        strong_complete = [m.meets_all_must_haves for m in ranking if m.candidate_id in strong]
+        # Suggestions: helpful if they cover strong candidates' gaps, noise if on grade-0 ones.
+        strong_gaps = [(m, s) for m in ranking if m.candidate_id in strong for s in m.missing_must_haves]
+        covered = sum(any(x.skill == s for x in m.suggested_matches) for m, s in strong_gaps)
+        noise = sum(len(m.suggested_matches) for m in ranking if relevance.get(m.candidate_id, 0) == 0)
         irrelevant = [m for m in ranking if relevance.get(m.candidate_id, 0) == 0]
         found = {skill_key(s) for s in req.must_have_skills}
         must_recall = sum(skill_key(s) in found for s in case["expected_must_haves"]) / len(
@@ -87,23 +108,30 @@ async def run_once(extractor, spec: dict) -> dict:
                 100 * sum(m.score < IRRELEVANT_MAX_SCORE for m in irrelevant) / len(irrelevant), 1),
             "must_have_recall": round(must_recall, 3),
             "flags_found": flags_ok,
+            "strong_meet_all_must_haves": all(strong_complete),
+            "strong_gaps": len(strong_gaps),
+            "strong_gaps_suggested": covered,
+            "suggestions_on_irrelevant": noise,
             "ranking": [(m.candidate_id, m.score) for m in ranking],
+            "suggested_matches": {m.candidate_id: [(s.skill, s.evidence) for s in m.suggested_matches]
+                                  for m in ranking if m.suggested_matches},
+            "missing_for_strong": {m.candidate_id: m.missing_must_haves
+                                   for m in ranking if m.candidate_id in strong and m.missing_must_haves},
             "parsed_must_haves": req.must_have_skills,
             "flagged": req.flagged_requirements,
         })
 
     fair_req = jobs[fair["job"]].requirements
-    base_score = score_candidate("base", resumes[fair["base"]], fair_req).score
-    fairness = {
-        name: {"score": score_candidate(name, variants[name], fair_req).score, "base": base_score}
-        for name in variant_ids
-    }
+    fair_pool = {"base": resumes[fair["base"]], **variants}
+    fair_semantic = await semantic_for(fair_req, fair_pool)
+    scores = {k: score_candidate(k, r, fair_req, fair_semantic.get(k)).score for k, r in fair_pool.items()}
+    fairness = {name: {"score": scores[name], "base": scores["base"]} for name in variant_ids}
 
-    usages = [p.usage for p in parsed]
     return {
         "per_job": per_job,
         "fairness": fairness,
         "llm_calls": len(usages),
+        "embedding_tokens": embedding_tokens,
         "model": usages[0].model,
         "input_tokens": sum(u.input_tokens for u in usages),
         "output_tokens": sum(u.output_tokens for u in usages),
@@ -118,6 +146,11 @@ def summarize(run: dict) -> dict:
         "irrelevant_low_pct": round(statistics.mean(j["irrelevant_low_pct"] for j in jobs), 1),
         "must_have_recall_pct": round(100 * statistics.mean(j["must_have_recall"] for j in jobs), 1),
         "flags_found_pct": round(100 * sum(j["flags_found"] for j in jobs) / len(jobs), 1),
+        "strong_meet_all_must_haves_pct": round(
+            100 * sum(j["strong_meet_all_must_haves"] for j in jobs) / len(jobs), 1),
+        "strong_gaps_suggested_pct": round(
+            100 * sum(j["strong_gaps_suggested"] for j in jobs) / max(1, sum(j["strong_gaps"] for j in jobs)), 1),
+        "suggestions_on_irrelevant": sum(j["suggestions_on_irrelevant"] for j in jobs),
         "fairness_identical_pct": round(
             100 * sum(f["score"] == f["base"] for f in run["fairness"].values()) / len(run["fairness"]), 1),
     }
@@ -127,6 +160,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=int, default=1, help="repeat the eval N times")
     parser.add_argument("--model", help="override the model from .env for this run")
+    parser.add_argument("--no-semantic", action="store_true", help="exact skill matching only")
     args = parser.parse_args()
     if args.model:  # read at call time by the extractor, so overriding config works
         if config.LLM_PROVIDER == "openrouter":
@@ -136,22 +170,28 @@ async def main() -> None:
 
     spec = json.loads((EVAL_DIR / "screen_cases.json").read_text(encoding="utf-8"))
     extractor = create_extractor()
+    embedder = None if args.no_semantic else Embedder()
     try:
-        runs = [await run_once(extractor, spec) for _ in range(args.runs)]
+        runs = [await run_once(extractor, spec, embedder) for _ in range(args.runs)]
     finally:
         await extractor.aclose()
+        if embedder:
+            await embedder.aclose()
 
     per_run = [summarize(r) for r in runs]
     summary = {
         "provider": config.LLM_PROVIDER,
         "model": runs[0]["model"],
+        "semantic_matching": embedder is not None,
         "runs": args.runs,
-        "llm_calls_per_run": runs[0]["llm_calls"],
+        "llm_calls_per_run": round(statistics.mean(r["llm_calls"] for r in runs), 1),
+        "embedding_tokens_per_run": round(statistics.mean(r["embedding_tokens"] for r in runs)),
         **{k: round(statistics.mean(s[k] for s in per_run), 3) for k in per_run[0]},
         "top1_correct_pct_per_run": [s["top1_correct_pct"] for s in per_run],
     }
     print(json.dumps(summary, indent=2))
 
+    spec_relevance = {j["id"]: j["relevance"] for j in spec["jobs"]}
     for i, run in enumerate(runs, start=1):
         for j in run["per_job"]:
             problems = []
@@ -163,9 +203,15 @@ async def main() -> None:
                 problems.append(f"must-haves parsed as {j['parsed_must_haves']}")
             if not j["flags_found"]:
                 problems.append(f"flags: {j['flagged']}")
+            if j["missing_for_strong"]:
+                problems.append(f"strong fit missing {j['missing_for_strong']}")
             top3 = ", ".join(f"{c} {s}" for c, s in j["ranking"][:3])
             print(f"  [run {i}] {j['job']:20} ndcg@{NDCG_K}={j[f'ndcg@{NDCG_K}']:.2f} "
                   f"top3: {top3}{'  <- ' + '; '.join(problems) if problems else ''}")
+            for cid, found in j["suggested_matches"].items():
+                grade = spec_relevance[j["job"]].get(cid, 0)
+                for skill, evidence in found:
+                    print(f"           suggest (grade {grade}): {cid}: {skill!r} via {evidence[:55]!r}")
         for name, f in run["fairness"].items():
             if f["score"] != f["base"]:
                 print(f"  [run {i}] FAIRNESS {name}: score {f['score']} vs base {f['base']}")

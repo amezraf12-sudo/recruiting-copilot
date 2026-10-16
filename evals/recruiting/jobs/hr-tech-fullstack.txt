@@ -1,0 +1,13 @@
+Full-Stack Engineer — HR Tech (Remote, Philippines)
+
+We build hiring tools for staffing agencies. You'll work across our product, from the
+candidate pipeline UI to the APIs behind it.
+
+Required:
+- React and Node.js
+- Experience building HR or recruitment software
+- 4+ years of professional experience
+
+Nice to have:
+- CI/CD
+- Mentoring other engineers

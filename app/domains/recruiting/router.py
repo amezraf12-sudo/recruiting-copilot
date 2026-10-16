@@ -3,7 +3,8 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 
 from app import config
-from app.core.deps import get_extractor
+from app.core.deps import get_embedder, get_extractor
+from app.core.embeddings import Embedder
 from app.core.llm import Extractor
 from app.core.rate_limit import RateLimiter, client_ip, get_limiter, rate_limit
 from app.domains.recruiting.schemas import (
@@ -58,12 +59,15 @@ async def screen_candidates(
     body: ScreenRequest,
     request: Request,
     extractor: Extractor = Depends(get_extractor),
+    embedder: Embedder | None = Depends(get_embedder),
     limiter: RateLimiter = Depends(get_limiter),
 ) -> ScreenResult:
     """Rank up to 10 resumes against one job posting, with reasons for every score."""
-    # The router already charged 1 call (the job); charge one more per resume.
-    limiter.check(client_ip(request), cost=len(body.candidates))
+    # The router already charged 1 call (the job). Charge the worst case up front: one
+    # parse per resume, plus one semantic verification per resume when enabled.
+    per_resume = 2 if embedder is not None else 1
+    limiter.check(client_ip(request), cost=per_resume * len(body.candidates))
     return await screen(
         extractor, job_description=body.job_description, candidates=body.candidates,
-        as_of=date.today(),
+        as_of=date.today(), embedder=embedder,
     )

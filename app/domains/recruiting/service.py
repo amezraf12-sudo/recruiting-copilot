@@ -2,6 +2,7 @@ import asyncio
 import time
 from datetime import date
 
+from app.core.embeddings import Embedder
 from app.core.errors import LLMIncompleteError, LLMRefusalError
 from app.core.llm import Extractor
 from app.domains.recruiting.experience import total_years_experience
@@ -22,6 +23,7 @@ from app.domains.recruiting.schemas import (
     ScreenResult,
     ScreenUsage,
 )
+from app.domains.recruiting.semantic import find_semantic_matches
 from app.domains.recruiting.seniority import infer_seniority
 
 MAX_CONCURRENT_LLM_CALLS = 4
@@ -66,8 +68,14 @@ async def screen(
     job_description: str,
     candidates: list[CandidateInput],
     as_of: date,
+    embedder: Embedder | None = None,
 ) -> ScreenResult:
-    """Parse the job and every resume concurrently, then score and rank in code."""
+    """Parse the job and every resume concurrently, then score and rank in code.
+
+    With an embedder, skills that exact matching missed get a semantic pass (retrieve with
+    embeddings, check with one LLM call per candidate). Its results are attached as
+    suggestions for the recruiter and never change scores or ranking.
+    """
     start = time.perf_counter()
     sem = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
 
@@ -82,7 +90,8 @@ async def screen(
     if isinstance(job, BaseException):
         raise job
 
-    matches, errors = [], []
+    parsed: dict[str, ParsedResume] = {}
+    errors = []
     usages = [job.usage]
     for candidate, resume in zip(candidates, resumes):
         if isinstance(resume, (LLMRefusalError, LLMIncompleteError)):
@@ -91,8 +100,22 @@ async def screen(
         if isinstance(resume, BaseException):
             raise resume  # provider-level failure (auth, rate limit, outage): fail the request
         usages.append(resume.usage)
-        matches.append(score_candidate(candidate.id, resume, job.requirements))
+        parsed[candidate.id] = resume
 
+    suggestions: dict[str, dict[str, str]] = {}
+    embedding_tokens = 0
+    if embedder is not None and parsed:
+        semantic = await find_semantic_matches(
+            embedder, extractor, job.requirements, parsed, MAX_CONCURRENT_LLM_CALLS
+        )
+        suggestions = semantic.matches
+        usages += semantic.llm_usages
+        embedding_tokens = semantic.embedding_tokens
+
+    matches = [
+        score_candidate(cid, resume, job.requirements, suggestions.get(cid))
+        for cid, resume in parsed.items()
+    ]
     return ScreenResult(
         job=job.requirements,
         ranking=rank(matches),
@@ -101,6 +124,7 @@ async def screen(
             llm_calls=len(usages),
             input_tokens=sum(u.input_tokens for u in usages),
             output_tokens=sum(u.output_tokens for u in usages),
+            embedding_tokens=embedding_tokens,
             latency_ms=int((time.perf_counter() - start) * 1000),
         ),
     )

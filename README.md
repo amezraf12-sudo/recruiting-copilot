@@ -81,9 +81,34 @@ night-shift requirement together with age and gender). The irrelevant-score thre
 changed; a QA tester with 1 of 3 required ML skills scores 17-23 across runs, ranked below
 the partial-fit candidate. 14 LLM calls per run.
 
-**Known limitation:** skill matching is exact (with aliases such as Postgres → PostgreSQL), so
-"recruitment software" doesn't match a resume describing an applicant tracking system.
-Semantic matching (embeddings) is the next step.
+### Semantic matching: measured, then deliberately kept out of the score
+
+Exact matching misses the same skill in other words ("recruitment software" vs. "led rebuild
+of the applicant tracking system"). Three approaches were measured on 40 labeled skill pairs
+(`evals/recruiting/skill_pairs.json`, threshold tuned on one half, reported on the other),
+including hard negatives that must not match:
+
+| Approach (held-out half) | Precision | Recall | Why |
+|--------------------------|-----------|--------|-----|
+| Exact + aliases | 100% | 0% | misses every rephrasing |
+| + embeddings (`text-embedding-3-small`) | 55.6% | 100% | embeddings measure *relatedness*: AWS vs Azure 0.71, Java vs JavaScript 0.66, both above real matches |
+| + embeddings, then LLM verification | 100% | 70-80% | retrieve-then-verify; named tools (Node.js, PostgreSQL) restricted to exact matching |
+
+Counting verified matches in the score broke consistency: the LLM check gave different
+verdicts for the same resume on different runs, so the counterfactual fairness check fell
+from 100% to 67%. **Decision: semantic matches are suggestions for recruiter review
+(`suggested_matches`, with evidence), never score inputs.** The score stays deterministic.
+
+| Screening eval, 3 runs | Exact only | Suggestions mode |
+|------------------------|-----------|------------------|
+| Correct #1 / NDCG@3 | 100% / 1.00 | 100% / 1.00 |
+| Fairness (identical scores) | 100% | **100%** |
+| Strong candidates' gaps with a suggestion | n/a | **100%** |
+| Suggestions shown on irrelevant candidates | n/a | 4 per run (visible to the recruiter, no score effect) |
+
+Example: for the HR-tech job, Maria is missing "HR or recruitment software" by exact match,
+and the recruiter sees: *Review: may have 'HR or recruitment software' (via "Full-stack
+developer with 7+ years building recruitment and HR web platforms"); not scored.*
 
 ## Project layout
 
