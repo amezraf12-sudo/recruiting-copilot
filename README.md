@@ -126,8 +126,17 @@ GPT-4o mini, mostly seniority). Screening eval, 3 runs, suggestions mode:
 times: original 90 ×5, school-swap 90 ×5, name-swap 90 ×4 / 95 ×1. The +5 lands on different
 variants in different runs and comes from one borderline extraction ("CI/CD" inferred from
 "introduced code review and CI on AWS"), so it is run-to-run extraction noise (about 1 in 15
-parses), not an effect of the name or school. Scoring code is deterministic; single-shot
-equality can't separate noise from bias, so fairness is judged on repeated-parse distributions.
+parses), not an effect of the name or school. A later run showed the reverse: the *original*
+scored 100 and both variants 92. Scoring code is deterministic; single-shot equality can't
+separate noise from bias, so fairness is judged on repeated-parse distributions.
+
+**Consistency in production:** every LLM extraction goes through an in-memory cache keyed by
+the exact input (`CachingExtractor` in `app/core/llm.py`), so submitting the same job and
+resumes again returns identical results, faster and at no cost. Evals bypass the cache.
+
+Later additions, 2 Haiku runs: appearance euphemisms common in PH ads ("pleasing personality")
+are flagged (100%), and `work_arrangement` (on-site / hybrid / remote) replaced a yes/no
+`remote` field that had labeled a hybrid job "Remote OK" (100% on the 4 postings that state it).
 
 ## Project layout
 

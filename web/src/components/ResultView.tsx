@@ -2,6 +2,8 @@ import type { ScreenResult } from "@/lib/api";
 import { CandidateCard } from "./CandidateCard";
 import { Chip } from "./Chip";
 
+const WORK_ARRANGEMENT_LABELS = { onsite: "On-site", hybrid: "Hybrid", remote: "Remote" } as const;
+
 export function ResultView({ result }: { result: ScreenResult }) {
   const { job, ranking, errors, usage } = result;
 
@@ -32,7 +34,7 @@ export function ResultView({ result }: { result: ScreenResult }) {
             job.seniority && `Level: ${job.seniority}`,
             job.min_years_experience && `${job.min_years_experience}+ years`,
             job.location,
-            job.remote && "Remote OK",
+            job.work_arrangement && WORK_ARRANGEMENT_LABELS[job.work_arrangement],
           ]
             .filter(Boolean)
             .join(" · ")}

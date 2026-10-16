@@ -21,6 +21,9 @@ CLAUDE_EFFORT = os.getenv("CLAUDE_EFFORT", "low")
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
 
+# In-memory cache of LLM extractions keyed by exact input (0 disables). See CachingExtractor.
+LLM_CACHE_MAX_ENTRIES = int(os.getenv("LLM_CACHE_MAX_ENTRIES", "1000"))
+
 # Browser origins allowed to call the API (the web/ frontend). Comma-separated list, plus a
 # regex for this project's Vercel production and preview URLs.
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]

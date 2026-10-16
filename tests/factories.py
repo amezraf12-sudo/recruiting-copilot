@@ -44,6 +44,6 @@ def job(must=(), nice=(), min_years=None, seniority=None, **overrides) -> JobReq
     fields = dict(
         title="Backend Engineer", seniority=seniority, min_years_experience=min_years,
         must_have_skills=list(must), nice_to_have_skills=list(nice), responsibilities=[],
-        location=None, remote=None, flagged_requirements=[],
+        location=None, work_arrangement=None, flagged_requirements=[],
     )
     return JobRequirements(**(fields | overrides))

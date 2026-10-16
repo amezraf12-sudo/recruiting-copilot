@@ -53,7 +53,7 @@ async def main() -> None:
             text = text.replace(old, new)
         texts[name] = text
 
-    extractor = create_extractor()
+    extractor = create_extractor(cache=False)
     sem = asyncio.Semaphore(4)
 
     async def parse(text):

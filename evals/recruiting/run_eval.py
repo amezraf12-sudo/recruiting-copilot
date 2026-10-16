@@ -114,7 +114,7 @@ async def main() -> None:
 
     spec = json.loads((EVAL_DIR / "cases.json").read_text(encoding="utf-8"))
     as_of = date.fromisoformat(spec["as_of"])  # fixed date keeps "Present" reproducible
-    extractor = create_extractor()
+    extractor = create_extractor(cache=False)
     sem = asyncio.Semaphore(4)
     runs: list[list[dict]] = []
     try:

@@ -14,7 +14,7 @@ export interface JobRequirements {
   nice_to_have_skills: string[];
   responsibilities: string[];
   location: string | null;
-  remote: boolean | null;
+  work_arrangement: "onsite" | "hybrid" | "remote" | null;
   flagged_requirements: string[];
 }
 

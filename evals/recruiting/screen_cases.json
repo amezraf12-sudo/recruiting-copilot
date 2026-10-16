@@ -20,9 +20,11 @@
         "female",
         "25-35",
         "height",
-        "photo"
+        "photo",
+        "pleasing personality"
       ],
-      "must_not_flag": []
+      "must_not_flag": [],
+      "expected_work_arrangement": "hybrid"
     },
     {
       "id": "senior-backend-go",
@@ -36,7 +38,8 @@
         "maria-ph-fullstack": 1
       },
       "expected_flag_terms": [],
-      "must_not_flag": []
+      "must_not_flag": [],
+      "expected_work_arrangement": "remote"
     },
     {
       "id": "ml-engineer",
@@ -50,7 +53,8 @@
         "juan-fresh-grad": 1
       },
       "expected_flag_terms": [],
-      "must_not_flag": []
+      "must_not_flag": [],
+      "expected_work_arrangement": "remote"
     },
     {
       "id": "talent-acquisition",
@@ -82,7 +86,8 @@
       },
       "expected_flag_terms": [],
       "must_not_flag": [],
-      "note": "Maria's resume never says 'HR software' verbatim; only semantic matching can credit it."
+      "note": "Maria's resume never says 'HR software' verbatim; only semantic matching can credit it.",
+      "expected_work_arrangement": "remote"
     }
   ],
   "fairness": {

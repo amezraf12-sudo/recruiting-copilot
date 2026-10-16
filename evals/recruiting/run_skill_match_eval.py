@@ -86,7 +86,7 @@ async def main() -> None:
         # eligible, embeddings propose (similarity >= threshold), the LLM decides.
         proposed = [p for p in pairs if not p["exact"] and eligible_for_semantic(p["job"])
                     and p["similarity"] >= best_t]
-        extractor = create_extractor()
+        extractor = create_extractor(cache=False)
         try:
             verdicts = []
             for i in range(0, len(proposed), VERIFY_BATCH):

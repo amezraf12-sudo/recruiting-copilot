@@ -108,6 +108,9 @@ async def run_once(extractor, spec: dict, embedder: Embedder | None) -> dict:
                 100 * sum(m.score < IRRELEVANT_MAX_SCORE for m in irrelevant) / len(irrelevant), 1),
             "must_have_recall": round(must_recall, 3),
             "flags_found": flags_ok,
+            # Only checked where the posting states it (key present in screen_cases.json).
+            "work_arrangement_ok": req.work_arrangement == case["expected_work_arrangement"]
+            if "expected_work_arrangement" in case else None,
             "strong_meet_all_must_haves": all(strong_complete),
             "strong_gaps": len(strong_gaps),
             "strong_gaps_suggested": covered,
@@ -146,6 +149,8 @@ def summarize(run: dict) -> dict:
         "irrelevant_low_pct": round(statistics.mean(j["irrelevant_low_pct"] for j in jobs), 1),
         "must_have_recall_pct": round(100 * statistics.mean(j["must_have_recall"] for j in jobs), 1),
         "flags_found_pct": round(100 * sum(j["flags_found"] for j in jobs) / len(jobs), 1),
+        "work_arrangement_pct": round(100 * statistics.mean(
+            j["work_arrangement_ok"] for j in jobs if j["work_arrangement_ok"] is not None), 1),
         "strong_meet_all_must_haves_pct": round(
             100 * sum(j["strong_meet_all_must_haves"] for j in jobs) / len(jobs), 1),
         # None when strong candidates had no gaps at all (nothing to suggest), not 0%.
@@ -171,7 +176,7 @@ async def main() -> None:
             config.CLAUDE_MODEL = args.model
 
     spec = json.loads((EVAL_DIR / "screen_cases.json").read_text(encoding="utf-8"))
-    extractor = create_extractor()
+    extractor = create_extractor(cache=False)
     embedder = None if args.no_semantic else Embedder()
     try:
         runs = [await run_once(extractor, spec, embedder) for _ in range(args.runs)]
@@ -206,6 +211,8 @@ async def main() -> None:
                 problems.append(f"must-haves parsed as {j['parsed_must_haves']}")
             if not j["flags_found"]:
                 problems.append(f"flags: {j['flagged']}")
+            if j["work_arrangement_ok"] is False:
+                problems.append("wrong work arrangement")
             if j["missing_for_strong"]:
                 problems.append(f"strong fit missing {j['missing_for_strong']}")
             top3 = ", ".join(f"{c} {s}" for c, s in j["ranking"][:3])
