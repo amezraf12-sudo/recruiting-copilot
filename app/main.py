@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app import config
@@ -26,6 +27,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Recruiting Copilot API", version="0.1.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=config.CORS_ORIGIN_REGEX,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 register_error_handlers(app)
 app.include_router(recruiting_router)
 

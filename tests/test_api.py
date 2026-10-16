@@ -228,3 +228,48 @@ def test_screen_rejects_bad_candidate_counts(client_with, n):
     body = {"job_description": JOB_TEXT,
             "candidates": [{"id": f"c{i}", "text": RESUME_TEXT} for i in range(n)]}
     assert client_with(FakeExtractor()).post("/recruiting/screen", json=body).status_code == 422
+
+
+def test_screen_rejects_duplicate_candidate_ids(client_with):
+    body = {"job_description": JOB_TEXT, "candidates": [
+        {"id": "same", "text": RESUME_TEXT}, {"id": "same", "text": RESUME_TEXT + " v2"}]}
+    assert client_with(FakeExtractor()).post("/recruiting/screen", json=body).status_code == 422
+
+
+def test_screen_upload_accepts_pdf_and_txt_with_unique_ids(client_with):
+    fake = FakeExtractor()
+    files = [
+        ("files", ("cv.pdf", b"%PDF-1.7 fake", "application/pdf")),
+        ("files", ("cv.pdf", b"%PDF-1.7 other", "application/pdf")),  # same name
+        ("files", ("notes.txt", RESUME_TEXT.encode(), "text/plain")),
+    ]
+    resp = client_with(fake).post(
+        "/recruiting/screen/upload", data={"job_description": JOB_TEXT}, files=files)
+    assert resp.status_code == 200
+    assert sorted(m["candidate_id"] for m in resp.json()["ranking"]) == ["cv.pdf", "cv.pdf (2)", "notes.txt"]
+    resume_calls = [c for c in fake.calls if c["output_type"] is not JobRequirements]
+    assert sum(c["pdf"] is not None for c in resume_calls) == 2
+    assert sum(c["text"] == RESUME_TEXT for c in resume_calls) == 1
+
+
+def test_screen_upload_rejects_unsupported_files_before_llm(client_with):
+    fake = FakeExtractor()
+    files = [("files", ("cv.docx", b"PK\x03\x04", "application/zip"))]
+    resp = client_with(fake).post(
+        "/recruiting/screen/upload", data={"job_description": JOB_TEXT}, files=files)
+    assert resp.status_code == 415
+    assert fake.calls == []
+
+
+def test_cors_allows_frontend_origins_only(client_with):
+    client = client_with(FakeExtractor())
+
+    def allowed(origin):
+        r = client.options("/recruiting/screen", headers={
+            "Origin": origin, "Access-Control-Request-Method": "POST"})
+        return r.headers.get("access-control-allow-origin") == origin
+
+    assert allowed("http://localhost:3000")
+    assert allowed("https://recruiting-copilot.vercel.app")
+    assert allowed("https://recruiting-copilot-git-main-amezraf12.vercel.app")
+    assert not allowed("https://evil.example.com")

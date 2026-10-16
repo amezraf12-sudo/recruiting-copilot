@@ -1,5 +1,6 @@
 import asyncio
 import time
+from dataclasses import dataclass
 from datetime import date
 
 from app.core.embeddings import Embedder
@@ -62,11 +63,24 @@ async def parse_job(extractor: Extractor, *, text: str) -> ParsedJob:
     return ParsedJob(requirements=result.data, usage=result.usage)
 
 
+@dataclass
+class ResumeDoc:
+    """One resume to screen: plain text or PDF bytes (exactly one)."""
+
+    id: str
+    text: str | None = None
+    pdf: bytes | None = None
+
+    @classmethod
+    def from_input(cls, candidate: CandidateInput) -> "ResumeDoc":
+        return cls(id=candidate.id, text=candidate.text)
+
+
 async def screen(
     extractor: Extractor,
     *,
     job_description: str,
-    candidates: list[CandidateInput],
+    candidates: list[ResumeDoc],
     as_of: date,
     embedder: Embedder | None = None,
 ) -> ScreenResult:
@@ -76,6 +90,9 @@ async def screen(
     embeddings, check with one LLM call per candidate). Its results are attached as
     suggestions for the recruiter and never change scores or ranking.
     """
+    ids = [c.id for c in candidates]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Candidate ids must be unique.")  # results are keyed by id
     start = time.perf_counter()
     sem = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
 
@@ -84,7 +101,9 @@ async def screen(
             return await coro
 
     job_task = limited(parse_job(extractor, text=job_description))
-    resume_tasks = [limited(parse_resume(extractor, text=c.text, as_of=as_of)) for c in candidates]
+    resume_tasks = [
+        limited(parse_resume(extractor, text=c.text, pdf=c.pdf, as_of=as_of)) for c in candidates
+    ]
     # The job must parse; a single bad resume shouldn't sink the whole screen.
     job, *resumes = await asyncio.gather(job_task, *resume_tasks, return_exceptions=True)
     if isinstance(job, BaseException):

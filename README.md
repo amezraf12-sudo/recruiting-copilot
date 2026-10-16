@@ -114,11 +114,12 @@ developer with 7+ years building recruitment and HR web platforms"); not scored.
 
 ```
 app/
-├── core/                 domain-agnostic: LLM extraction, errors, shared schemas
+├── core/                 domain-agnostic: LLM extraction, embeddings, errors, rate limits
 └── domains/
-    └── recruiting/       resume schema, prompts, experience math, routes
-evals/recruiting/         labeled resumes + scorer
+    └── recruiting/       schemas, prompts, experience & seniority rules, matching, routes
+evals/recruiting/         labeled resumes, jobs, skill pairs + three eval runners
 tests/                    unit + API tests (no API key needed)
+web/                      Next.js frontend (see web/README.md)
 ```
 
 A new use case (support tickets, invoices, ...) is a new folder under `domains/` with its

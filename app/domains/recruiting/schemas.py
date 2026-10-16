@@ -163,6 +163,13 @@ class ScreenRequest(BaseModel):
     job_description: str = Field(min_length=50, max_length=20_000)
     candidates: list[CandidateInput] = Field(min_length=1, max_length=10)
 
+    @model_validator(mode="after")
+    def _unique_ids(self):
+        ids = [c.id for c in self.candidates]
+        if len(set(ids)) != len(ids):
+            raise ValueError("Candidate ids must be unique.")
+        return self
+
 
 class ParsedResume(BaseModel):
     profile: ResumeExtraction

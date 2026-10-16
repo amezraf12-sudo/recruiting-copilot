@@ -21,6 +21,11 @@ CLAUDE_EFFORT = os.getenv("CLAUDE_EFFORT", "low")
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
 
+# Browser origins allowed to call the API (the web/ frontend). Comma-separated list, plus a
+# regex for this project's Vercel production and preview URLs.
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
+CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", r"https://recruiting-copilot[a-z0-9-]*\.vercel\.app")
+
 # Protects the LLM budget of a public demo (see app/core/rate_limit.py)
 # Counted in LLM calls; a 10-resume screen with semantic matching can use up to 21.
 RATE_LIMIT_PER_IP_PER_HOUR = int(os.getenv("RATE_LIMIT_PER_IP_PER_HOUR", "50"))
