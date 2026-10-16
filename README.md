@@ -1,5 +1,9 @@
 # Recruiting Copilot
 
+**[Live demo](https://recruiting-copilot-1x9k.onrender.com/)**: upload a resume at
+`POST /recruiting/parse-resume/file` → *Try it out*. (Free hosting: the first request after
+idle can take ~30-60 s while the server wakes up.)
+
 AI platform for recruiters: parses resumes into structured, validated candidate profiles,
 with candidate–job matching and a recruiter agent on the roadmap.
 
