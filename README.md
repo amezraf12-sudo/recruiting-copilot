@@ -28,6 +28,44 @@ from day one.
   evals/recruiting ── 8 targeted resumes ──► per-check accuracy · latency · tokens
 ```
 
+## Screening: rank candidates against a job
+
+`POST /recruiting/screen` takes one job posting and up to 10 resumes and returns a ranked
+shortlist. The LLM parses the posting and the resumes; **code scores and ranks**, so results
+are explainable and identical across models.
+
+```
+job posting ──LLM──► JobRequirements (must-haves, nice-to-haves, min years, level, flags)
+resumes ─────LLM──► ParsedResume (profile, computed years, computed seniority)
+                           │
+                           ▼
+        matching.py: required-skill coverage (50) · years (20) · seniority (15) · bonus (15)
+        experience, seniority and bonus credited only in proportion to required-skill match
+                           │
+                           ▼
+        ranking: all must-haves first, then score · matched/missing skills · reasons
+```
+
+**Fair by design:** scoring never uses name, school, location or photos. Requirements about
+age, gender, civil status, height or appearance (common in PH job ads) are extracted into
+`flagged_requirements` for the recruiter to review, never used as criteria.
+
+Example from a real-style PH posting (`evals/recruiting/jobs/senior-fullstack-ph.txt`):
+
+```
+FLAGGED: "Female, 25-35 years old, single, with pleasing personality"
+         "Height at least 5'2""   "Please attach a recent 2x2 photo with your resume."
+
+1.  81  maria-ph-fullstack    7.42y  ALL MUST-HAVES
+2.  31  aisha-overlapping     6.67y  missing React, Node.js, TypeScript
+3.  31  kevin-messy-format    8.83y  missing Node.js, PostgreSQL, AWS
+4.   0  patricia-recruiter    8.42y  missing all 5 (8 years as a recruiter earns nothing here)
+```
+
+**Known limitation:** skill matching is exact (with aliases such as Postgres → PostgreSQL), so
+"recruitment software" doesn't match a resume describing an applicant tracking system.
+Semantic matching (embeddings) is the next step.
+
 ## Project layout
 
 ```

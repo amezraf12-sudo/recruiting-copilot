@@ -8,7 +8,7 @@ horizontally scaled deployment (use Redis there).
 import time
 from collections import defaultdict, deque
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 
 from app import config
 
@@ -29,21 +29,26 @@ class RateLimiter:
         while window and now - window[0] >= span:
             window.popleft()
 
-    def check(self, client_ip: str) -> None:
-        """Record a request, or raise 429 if a limit is reached."""
+    def check(self, client_ip: str, cost: int = 1) -> None:
+        """Record `cost` LLM calls, or raise 429 (recording nothing) if a limit would be exceeded."""
         now = self.clock()
         ip_window = self._by_ip[client_ip]
         self._prune(ip_window, now, HOUR)
         self._prune(self._global, now, DAY)
-        if len(self._global) >= self.global_per_day:
+        if len(self._global) + cost > self.global_per_day:
             raise HTTPException(status_code=429, detail="Demo daily limit reached; try tomorrow.")
-        if len(ip_window) >= self.per_ip_per_hour:
+        if len(ip_window) + cost > self.per_ip_per_hour:
             raise HTTPException(status_code=429, detail="Too many requests; try again later.")
-        ip_window.append(now)
-        self._global.append(now)
+        ip_window.extend([now] * cost)
+        self._global.extend([now] * cost)
 
 
-limiter = RateLimiter(config.RATE_LIMIT_PER_IP_PER_HOUR, config.RATE_LIMIT_GLOBAL_PER_DAY)
+_limiter = RateLimiter(config.RATE_LIMIT_PER_IP_PER_HOUR, config.RATE_LIMIT_GLOBAL_PER_DAY)
+
+
+def get_limiter() -> RateLimiter:
+    """Dependency so tests can swap in a fresh limiter."""
+    return _limiter
 
 
 def client_ip(request: Request) -> str:
@@ -54,6 +59,6 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def rate_limit(request: Request) -> None:
-    """FastAPI dependency for routes that call the LLM."""
+def rate_limit(request: Request, limiter: RateLimiter = Depends(get_limiter)) -> None:
+    """FastAPI dependency for routes that make one LLM call."""
     limiter.check(client_ip(request))

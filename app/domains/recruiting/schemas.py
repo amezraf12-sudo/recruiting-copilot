@@ -107,9 +107,56 @@ class ResumeExtraction(BaseModel):
         return self
 
 
+class JobRequirements(BaseModel):
+    # Seen in a screening run: without a description, a model returned the schema's own
+    # name ("JobRequirements") as the title.
+    title: str = Field(description="The job title exactly as written in the posting.")
+    seniority: Seniority | None = Field(
+        description="Level the job targets, if stated or clearly implied by the title. "
+        "Null otherwise."
+    )
+    min_years_experience: float | None = Field(
+        description="Minimum total years of experience required. Null if not stated."
+    )
+    must_have_skills: list[str] = Field(
+        description="Required skills (required, must, 'X+ years of <skill>'). Canonical "
+        "names as they would appear on a resume, deduplicated."
+    )
+    nice_to_have_skills: list[str] = Field(
+        description="Preferred, bonus or 'a plus' skills. Canonical names, deduplicated."
+    )
+    responsibilities: list[str] = Field(description="Main duties, concise.")
+    location: str | None = Field(description="Work location if stated. Null otherwise.")
+    remote: bool | None = Field(description="True if remote is allowed. Null if not stated.")
+    flagged_requirements: list[str] = Field(
+        description="Requirements about age, gender, civil status, religion, ethnicity, "
+        "nationality, height/weight, appearance or photos, quoted as written. These are "
+        "never used for screening."
+    )
+
+
 # --- API models ---
 class ResumeTextRequest(BaseModel):
     text: str = Field(min_length=50, max_length=50_000, description="Plain-text resume.")
+
+
+class JobTextRequest(BaseModel):
+    text: str = Field(min_length=50, max_length=20_000, description="Plain-text job posting.")
+
+
+class ParsedJob(BaseModel):
+    requirements: JobRequirements
+    usage: UsageInfo
+
+
+class CandidateInput(BaseModel):
+    id: str = Field(min_length=1, max_length=100, description="Your identifier for this candidate.")
+    text: str = Field(min_length=50, max_length=50_000, description="Plain-text resume.")
+
+
+class ScreenRequest(BaseModel):
+    job_description: str = Field(min_length=50, max_length=20_000)
+    candidates: list[CandidateInput] = Field(min_length=1, max_length=10)
 
 
 class ParsedResume(BaseModel):
@@ -121,3 +168,37 @@ class ParsedResume(BaseModel):
         description="Computed in code from seniority_signals and total_years_experience."
     )
     usage: UsageInfo
+
+
+class CandidateMatch(BaseModel):
+    candidate_id: str
+    full_name: str | None
+    score: int = Field(description="0-100, computed in code from the components below.")
+    meets_all_must_haves: bool
+    matched_must_haves: list[str]
+    missing_must_haves: list[str]
+    matched_nice_to_haves: list[str]
+    total_years_experience: float
+    seniority: Seniority
+    reasons: list[str] = Field(description="Human-readable explanation of the score.")
+
+
+class CandidateError(BaseModel):
+    candidate_id: str
+    error: str
+
+
+class ScreenUsage(BaseModel):
+    llm_calls: int
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+
+
+class ScreenResult(BaseModel):
+    job: JobRequirements
+    ranking: list[CandidateMatch] = Field(
+        description="Candidates meeting all must-haves first, then by score."
+    )
+    errors: list[CandidateError]
+    usage: ScreenUsage

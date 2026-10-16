@@ -1,0 +1,20 @@
+SENIOR FULL-STACK DEVELOPER (Hybrid, Makati City)
+
+TalentHub Solutions is hiring a Senior Full-Stack Developer to build our HR and recruitment
+platform used by 200+ companies across Southeast Asia.
+
+Qualifications:
+- Female, 25-35 years old, single, with pleasing personality
+- Height at least 5'2"
+- At least 5 years of professional software development experience
+- Required: React, Node.js, TypeScript and PostgreSQL
+- Experience deploying applications on AWS is required
+- Docker and CI/CD experience is a plus
+- Experience with recruitment or HR software is a big plus
+
+Responsibilities:
+- Design and build features end to end across our React frontend and Node.js APIs
+- Own database design and performance for core hiring workflows
+- Mentor junior developers and review code
+
+Please attach a recent 2x2 photo with your resume.

@@ -1,16 +1,22 @@
 """API tests with a fake extractor: fast, free, and no API key needed."""
 
 import pytest
-from fastapi import Request
 from fastapi.testclient import TestClient
 
 from app.core.deps import get_extractor
 from app.core.errors import LLMRefusalError
 from app.core.llm import ExtractionResult
-from app.core.rate_limit import RateLimiter, client_ip, rate_limit
+from app.core.rate_limit import RateLimiter, get_limiter
 from app.core.schemas import UsageInfo
-from app.domains.recruiting.schemas import ResumeExtraction, SenioritySignals, WorkExperience
+from app.core.errors import LLMIncompleteError
+from app.domains.recruiting.schemas import (
+    JobRequirements,
+    ResumeExtraction,
+    SenioritySignals,
+    WorkExperience,
+)
 from app.main import app
+from tests.factories import job as job_factory
 
 RESUME_TEXT = "Maria Santos - Senior Full-Stack Developer, TalentBridge PH, Jan 2022 to Present. " * 2
 
@@ -43,17 +49,29 @@ FAKE_PROFILE = ResumeExtraction(
 )
 
 
+FAKE_JOB = job_factory(must=["React", "Kubernetes"], min_years=5, seniority="senior",
+                       flagged_requirements=["Female, 22-30 years old"])
+
+JOB_TEXT = "Senior Full-Stack Engineer. Required: React, Kubernetes, 5+ years. " * 2
+
+
 class FakeExtractor:
-    def __init__(self, error: Exception | None = None):
+    """Returns FAKE_JOB for job postings and FAKE_PROFILE for resumes."""
+
+    def __init__(self, error: Exception | None = None, fail_texts: dict[str, Exception] | None = None):
         self.error = error
+        self.fail_texts = fail_texts or {}
         self.calls: list[dict] = []
 
     async def extract(self, **kwargs) -> ExtractionResult:
         self.calls.append(kwargs)
         if self.error:
             raise self.error
+        if kwargs.get("text") in self.fail_texts:
+            raise self.fail_texts[kwargs["text"]]
+        data = FAKE_JOB if kwargs["output_type"] is JobRequirements else FAKE_PROFILE
         return ExtractionResult(
-            data=FAKE_PROFILE,
+            data=data,
             usage=UsageInfo(model="fake", input_tokens=10, output_tokens=20, latency_ms=5),
         )
 
@@ -64,11 +82,7 @@ def client_with():
         app.dependency_overrides[get_extractor] = lambda: extractor
         # Rate limiting is tested on its own; other tests get a fresh, generous limiter.
         fresh = limiter or RateLimiter(per_ip_per_hour=1000, global_per_day=1000)
-
-        def limited(request: Request) -> None:
-            fresh.check(client_ip(request))
-
-        app.dependency_overrides[rate_limit] = limited
+        app.dependency_overrides[get_limiter] = lambda: fresh
         return TestClient(app)  # no `with` -> lifespan (real client) doesn't start
 
     yield _make
@@ -155,3 +169,52 @@ def test_refusal_maps_to_422(client_with):
         "/recruiting/parse-resume", json={"text": RESUME_TEXT}
     )
     assert resp.status_code == 422
+
+
+def test_parse_job_returns_requirements_and_flags(client_with):
+    resp = client_with(FakeExtractor()).post("/recruiting/parse-job", json={"text": JOB_TEXT})
+    assert resp.status_code == 200
+    req = resp.json()["requirements"]
+    assert req["must_have_skills"] == ["React", "Kubernetes"]
+    assert req["flagged_requirements"] == ["Female, 22-30 years old"]
+
+
+def test_screen_ranks_and_explains(client_with):
+    fake = FakeExtractor()
+    body = {"job_description": JOB_TEXT, "candidates": [
+        {"id": "c1", "text": RESUME_TEXT}, {"id": "c2", "text": RESUME_TEXT + " v2"}]}
+    resp = client_with(fake).post("/recruiting/screen", json=body)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert [m["candidate_id"] for m in data["ranking"]] == ["c1", "c2"]  # equal scores keep order
+    top = data["ranking"][0]
+    assert top["missing_must_haves"] == ["Kubernetes"] and not top["meets_all_must_haves"]
+    assert data["usage"]["llm_calls"] == 3  # 1 job + 2 resumes
+    assert len(fake.calls) == 3
+
+
+def test_screen_reports_a_failed_resume_without_failing_the_rest(client_with):
+    bad = RESUME_TEXT + " unreadable"
+    fake = FakeExtractor(fail_texts={bad: LLMIncompleteError("No valid output.")})
+    body = {"job_description": JOB_TEXT, "candidates": [
+        {"id": "good", "text": RESUME_TEXT}, {"id": "bad", "text": bad}]}
+    data = client_with(fake).post("/recruiting/screen", json=body).json()
+    assert [m["candidate_id"] for m in data["ranking"]] == ["good"]
+    assert data["errors"] == [{"candidate_id": "bad", "error": "No valid output."}]
+
+
+def test_screen_charges_one_call_per_resume_plus_job(client_with):
+    fake = FakeExtractor()
+    client = client_with(fake, RateLimiter(per_ip_per_hour=3, global_per_day=100))
+    body = {"job_description": JOB_TEXT, "candidates": [
+        {"id": f"c{i}", "text": RESUME_TEXT} for i in range(3)]}  # needs 4 calls, only 3 allowed
+    resp = client.post("/recruiting/screen", json=body)
+    assert resp.status_code == 429
+    assert fake.calls == []  # rejected before any LLM call
+
+
+@pytest.mark.parametrize("n", [0, 11])
+def test_screen_rejects_bad_candidate_counts(client_with, n):
+    body = {"job_description": JOB_TEXT,
+            "candidates": [{"id": f"c{i}", "text": RESUME_TEXT} for i in range(n)]}
+    assert client_with(FakeExtractor()).post("/recruiting/screen", json=body).status_code == 422

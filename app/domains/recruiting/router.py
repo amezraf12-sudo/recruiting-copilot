@@ -1,15 +1,22 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 
 from app import config
 from app.core.deps import get_extractor
 from app.core.llm import Extractor
-from app.core.rate_limit import rate_limit
-from app.domains.recruiting.schemas import ParsedResume, ResumeTextRequest
-from app.domains.recruiting.service import parse_resume
+from app.core.rate_limit import RateLimiter, client_ip, get_limiter, rate_limit
+from app.domains.recruiting.schemas import (
+    JobTextRequest,
+    ParsedJob,
+    ParsedResume,
+    ResumeTextRequest,
+    ScreenRequest,
+    ScreenResult,
+)
+from app.domains.recruiting.service import parse_job, parse_resume, screen
 
-# Every route here calls the LLM, so every route is rate limited.
+# Every route here calls the LLM, so every route is rate limited (1 call each by default).
 router = APIRouter(prefix="/recruiting", tags=["recruiting"], dependencies=[Depends(rate_limit)])
 
 
@@ -37,3 +44,26 @@ async def parse_resume_file(
             raise HTTPException(status_code=415, detail="Text file must be UTF-8.")
         return await parse_resume(extractor, text=text, as_of=date.today())
     raise HTTPException(status_code=415, detail="Upload a PDF or a UTF-8 .txt file.")
+
+
+@router.post("/parse-job", response_model=ParsedJob)
+async def parse_job_text(
+    body: JobTextRequest, extractor: Extractor = Depends(get_extractor)
+) -> ParsedJob:
+    return await parse_job(extractor, text=body.text)
+
+
+@router.post("/screen", response_model=ScreenResult)
+async def screen_candidates(
+    body: ScreenRequest,
+    request: Request,
+    extractor: Extractor = Depends(get_extractor),
+    limiter: RateLimiter = Depends(get_limiter),
+) -> ScreenResult:
+    """Rank up to 10 resumes against one job posting, with reasons for every score."""
+    # The router already charged 1 call (the job); charge one more per resume.
+    limiter.check(client_ip(request), cost=len(body.candidates))
+    return await screen(
+        extractor, job_description=body.job_description, candidates=body.candidates,
+        as_of=date.today(),
+    )
