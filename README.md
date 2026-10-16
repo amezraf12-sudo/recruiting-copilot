@@ -111,6 +111,24 @@ Example: for the HR-tech job, Maria is missing "HR or recruitment software" by e
 and the recruiter sees: *Review: may have 'HR or recruitment software' (via "Full-stack
 developer with 7+ years building recruitment and HR web platforms"); not scored.*
 
+### Live model: Claude Haiku 5.5
+
+The live demo runs `anthropic/claude-haiku-5.5` (100% on the parsing eval, vs. 75% for
+GPT-4o mini, mostly seniority). Screening eval, 3 runs, suggestions mode:
+
+| Model | Correct #1 | NDCG@3 | Irrelevant < 20 | Bias flags | Strong fits meet all must-haves | Fairness (single-shot) | LLM calls/run |
+|-------|-----------|--------|-----------------|------------|-------------------------------|------------------------|---------------|
+| openai/gpt-4o-mini | 100% | 1.00 | 100% | 100% | 60% | 100% | 48.7 |
+| anthropic/claude-haiku-5.5 | 100% | 1.00 | 96.7% | 100% | **100%** | 83.3% | 33.3 |
+
+**Investigating the 83.3%:** one run scored the Stanford variant 95 vs. 90 for the original.
+`python -m evals.recruiting.run_fairness_probe --n 5` parses the original and each variant 5
+times: original 90 ×5, school-swap 90 ×5, name-swap 90 ×4 / 95 ×1. The +5 lands on different
+variants in different runs and comes from one borderline extraction ("CI/CD" inferred from
+"introduced code review and CI on AWS"), so it is run-to-run extraction noise (about 1 in 15
+parses), not an effect of the name or school. Scoring code is deterministic; single-shot
+equality can't separate noise from bias, so fairness is judged on repeated-parse distributions.
+
 ## Project layout
 
 ```

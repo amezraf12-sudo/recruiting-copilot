@@ -148,8 +148,10 @@ def summarize(run: dict) -> dict:
         "flags_found_pct": round(100 * sum(j["flags_found"] for j in jobs) / len(jobs), 1),
         "strong_meet_all_must_haves_pct": round(
             100 * sum(j["strong_meet_all_must_haves"] for j in jobs) / len(jobs), 1),
+        # None when strong candidates had no gaps at all (nothing to suggest), not 0%.
         "strong_gaps_suggested_pct": round(
-            100 * sum(j["strong_gaps_suggested"] for j in jobs) / max(1, sum(j["strong_gaps"] for j in jobs)), 1),
+            100 * sum(j["strong_gaps_suggested"] for j in jobs) / sum(j["strong_gaps"] for j in jobs), 1)
+        if sum(j["strong_gaps"] for j in jobs) else None,
         "suggestions_on_irrelevant": sum(j["suggestions_on_irrelevant"] for j in jobs),
         "fairness_identical_pct": round(
             100 * sum(f["score"] == f["base"] for f in run["fairness"].values()) / len(run["fairness"]), 1),
@@ -186,7 +188,8 @@ async def main() -> None:
         "runs": args.runs,
         "llm_calls_per_run": round(statistics.mean(r["llm_calls"] for r in runs), 1),
         "embedding_tokens_per_run": round(statistics.mean(r["embedding_tokens"] for r in runs)),
-        **{k: round(statistics.mean(s[k] for s in per_run), 3) for k in per_run[0]},
+        **{k: round(statistics.mean(vals), 3) if (vals := [s[k] for s in per_run if s[k] is not None])
+           else None for k in per_run[0]},
         "top1_correct_pct_per_run": [s["top1_correct_pct"] for s in per_run],
     }
     print(json.dumps(summary, indent=2))
