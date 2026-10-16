@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app import config
+from app.core.chat import create_chat_client
 from app.core.embeddings import Embedder
 from app.core.errors import register_error_handlers
 from app.core.llm import create_extractor
@@ -20,10 +21,13 @@ async def lifespan(app: FastAPI):
     app.state.extractor = create_extractor()
     use_embeddings = config.SEMANTIC_MATCHING and bool(config.OPENROUTER_API_KEY)
     app.state.embedder = Embedder() if use_embeddings else None
+    app.state.chat_client = create_chat_client()
     yield
     await app.state.extractor.aclose()
     if app.state.embedder:
         await app.state.embedder.aclose()
+    if app.state.chat_client:
+        await app.state.chat_client.close()
 
 
 app = FastAPI(title="Recruiting Copilot API", version="0.1.0", lifespan=lifespan)

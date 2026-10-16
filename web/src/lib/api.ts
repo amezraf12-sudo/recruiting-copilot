@@ -37,6 +37,35 @@ export interface CandidateMatch {
   reasons: string[];
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ProposedAction {
+  id: string;
+  type: "outreach_email" | "screening_questions";
+  candidate_id: string;
+  candidate_name: string | null;
+  subject: string | null;
+  body: string | null;
+  questions: string[];
+  warnings: string[];
+}
+
+export interface ToolTrace {
+  tool: string;
+  arguments: Record<string, unknown>;
+  ok: boolean;
+}
+
+export interface AssistantResponse {
+  reply: string;
+  actions: ProposedAction[];
+  trace: ToolTrace[];
+  usage: ScreenResult["usage"];
+}
+
 export interface ScreenResult {
   job: JobRequirements;
   ranking: CandidateMatch[];
@@ -68,7 +97,7 @@ async function readError(response: Response): Promise<string> {
   return `Request failed (${response.status}).`;
 }
 
-async function post(path: string, init: RequestInit): Promise<ScreenResult> {
+async function post<T = ScreenResult>(path: string, init: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, { method: "POST", ...init });
@@ -94,6 +123,14 @@ export function screenTexts(
   return post("/recruiting/screen", {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ job_description: jobDescription, candidates }),
+  });
+}
+
+/** The screen is sent back with each request: the API is stateless. */
+export function askAssistant(screen: ScreenResult, messages: ChatMessage[]): Promise<AssistantResponse> {
+  return post<AssistantResponse>("/recruiting/assistant", {
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job: screen.job, candidates: screen.ranking, messages }),
   });
 }
 

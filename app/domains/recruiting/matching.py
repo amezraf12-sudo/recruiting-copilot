@@ -10,6 +10,7 @@ location and anything in JobRequirements.flagged_requirements are never inputs.
 from app.domains.recruiting.schemas import (
     SENIORITY_ORDER,
     CandidateMatch,
+    CandidateSummary,
     JobRequirements,
     ParsedResume,
     SemanticEvidence,
@@ -108,6 +109,13 @@ def score_candidate(
     return CandidateMatch(
         candidate_id=candidate_id,
         full_name=profile.full_name,
+        summary=CandidateSummary(
+            headline=profile.headline,
+            technical_skills=profile.technical_skills,
+            soft_skills=profile.soft_skills,
+            experience=profile.experience,
+            certifications=profile.certifications,
+        ),
         score=score,
         meets_all_must_haves=not missing_must,
         matched_must_haves=matched_must,

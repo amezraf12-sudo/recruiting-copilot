@@ -191,9 +191,20 @@ class SemanticEvidence(BaseModel):
     evidence: str = Field(description="Resume phrase that demonstrates the skill.")
 
 
+class CandidateSummary(BaseModel):
+    """Work history for the recruiter and the assistant. No contact details on purpose."""
+
+    headline: str
+    technical_skills: list[str]
+    soft_skills: list[str]
+    experience: list[WorkExperience]
+    certifications: list[str]
+
+
 class CandidateMatch(BaseModel):
     candidate_id: str
     full_name: str | None
+    summary: CandidateSummary
     score: int = Field(description="0-100, computed in code from the components below.")
     meets_all_must_haves: bool
     matched_must_haves: list[str]
@@ -219,6 +230,55 @@ class ScreenUsage(BaseModel):
     output_tokens: int
     embedding_tokens: int
     latency_ms: int
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class AssistantRequest(BaseModel):
+    """A recruiter's request about a completed screen. The client sends the screen back,
+    so the API stays stateless."""
+
+    job: JobRequirements
+    candidates: list[CandidateMatch] = Field(min_length=1, max_length=10)
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def _ends_with_user(self):
+        if self.messages[-1].role != "user":
+            raise ValueError("The last message must be from the user.")
+        return self
+
+
+class ProposedAction(BaseModel):
+    """Something the assistant suggests doing. Never executed by the API; the recruiter
+    approves, edits or rejects it."""
+
+    id: str
+    type: Literal["outreach_email", "screening_questions"]
+    candidate_id: str
+    candidate_name: str | None
+    subject: str | None = None
+    body: str | None = None
+    questions: list[str] = []
+    warnings: list[str] = Field(
+        default=[], description="Guardrail findings (e.g. protected-attribute language) to review."
+    )
+
+
+class ToolTrace(BaseModel):
+    tool: str
+    arguments: dict
+    ok: bool
+
+
+class AssistantResponse(BaseModel):
+    reply: str
+    actions: list[ProposedAction]
+    trace: list[ToolTrace] = Field(description="Tools the assistant called, in order.")
+    usage: ScreenUsage
 
 
 class ScreenResult(BaseModel):

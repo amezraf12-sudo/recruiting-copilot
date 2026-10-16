@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { ApiError, type ScreenResult, screenFiles, screenTexts } from "@/lib/api";
 import samples from "@/lib/samples.json";
+import { AssistantPanel } from "./AssistantPanel";
 import { ResultView } from "./ResultView";
 
 const MAX_FILES = 10;
@@ -21,6 +22,7 @@ export function Screener() {
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScreenResult | null>(null);
+  const [screenRun, setScreenRun] = useState(0);
 
   useEffect(() => {
     if (!loading) return;
@@ -54,6 +56,7 @@ export function Screener() {
           ? await screenTexts(jobText, samples.resumes)
           : await screenFiles(jobText, files);
       setResult(res);
+      setScreenRun((n) => n + 1);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
     } finally {
@@ -173,6 +176,8 @@ export function Screener() {
       )}
 
       {result && <ResultView result={result} />}
+      {/* keyed by run, so a new screen starts a fresh conversation */}
+      {result && result.ranking.length > 0 && <AssistantPanel key={screenRun} screen={result} />}
     </div>
   );
 }

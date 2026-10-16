@@ -2,12 +2,17 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 
+from openai import AsyncOpenAI
+
 from app import config
-from app.core.deps import get_embedder, get_extractor
+from app.core.deps import get_chat_client, get_embedder, get_extractor
 from app.core.embeddings import Embedder
 from app.core.llm import Extractor
 from app.core.rate_limit import RateLimiter, client_ip, get_limiter, rate_limit
+from app.domains.recruiting.assistant import run_assistant
 from app.domains.recruiting.schemas import (
+    AssistantRequest,
+    AssistantResponse,
     JobTextRequest,
     ParsedJob,
     ParsedResume,
@@ -82,6 +87,22 @@ async def screen_candidates(
         candidates=[ResumeDoc.from_input(c) for c in body.candidates],
         as_of=date.today(), embedder=embedder,
     )
+
+
+@router.post("/assistant", response_model=AssistantResponse)
+async def assistant(
+    body: AssistantRequest,
+    request: Request,
+    client: AsyncOpenAI | None = Depends(get_chat_client),
+    limiter: RateLimiter = Depends(get_limiter),
+) -> AssistantResponse:
+    """Ask the recruiter assistant about a completed screen. It proposes outreach emails and
+    screening questions for review; it never sends anything."""
+    if client is None:
+        raise HTTPException(status_code=501, detail="The assistant requires LLM_PROVIDER=openrouter.")
+    ip = client_ip(request)
+    # The router charged the first model call; charge each further agent step as it happens.
+    return await run_assistant(client, body, on_step=lambda _: limiter.check(ip))
 
 
 @router.post("/screen/upload", response_model=ScreenResult)
