@@ -1,8 +1,9 @@
 # Recruiting Copilot
 
-**[Live demo](https://recruiting-copilot-1x9k.onrender.com/)**: upload a resume at
-`POST /recruiting/parse-resume/file` → *Try it out*. (Free hosting: the first request after
-idle can take ~30-60 s while the server wakes up.)
+**[Try the live app](https://recruiting-copilot-six.vercel.app/)**: pick a sample job, click
+*Screen candidates*, and get a ranked shortlist with reasons and bias flags. No sign-up.
+[API docs](https://recruiting-copilot-1x9k.onrender.com/docs). (Free hosting: the first request
+after idle can take ~30-60 s while the API wakes up.)
 
 AI platform for recruiters: parses resumes into structured, validated candidate profiles,
 with candidate–job matching and a recruiter agent on the roadmap.
@@ -237,8 +238,10 @@ across models.
 
 ## Roadmap
 
-- [ ] Deploy with a live demo link
-- [ ] Candidate ↔ job matching: hybrid search (BM25 + pgvector), reranking, precision@k evals
-- [ ] Fairness eval: identical resumes with swapped names/schools must score the same
+- [x] Deployed: web app on Vercel, API on Render, rate-limited
+- [x] Candidate ↔ job screening with deterministic scoring, NDCG@3 eval and bias flags
+- [x] Counterfactual fairness eval: swapped name/school must score identically
+- [x] Semantic skill matching (embeddings + LLM check), measured and shipped as review suggestions
+- [x] Next.js web app
 - [ ] Recruiter agent: drafts outreach and screening questions, recruiter approves before sending
-- [ ] Next.js recruiter dashboard
+- [ ] Search across a large candidate pool (pgvector + hybrid retrieval)
