@@ -16,3 +16,7 @@ CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 CLAUDE_EFFORT = os.getenv("CLAUDE_EFFORT", "low")
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
+
+# Protects the LLM budget of a public demo (see app/core/rate_limit.py)
+RATE_LIMIT_PER_IP_PER_HOUR = int(os.getenv("RATE_LIMIT_PER_IP_PER_HOUR", "20"))
+RATE_LIMIT_GLOBAL_PER_DAY = int(os.getenv("RATE_LIMIT_GLOBAL_PER_DAY", "500"))

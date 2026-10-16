@@ -1,0 +1,23 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploy: Render dashboard -> New -> Blueprint -> select this repo.
+services:
+  - type: web
+    name: recruiting-copilot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENROUTER_API_KEY
+        sync: false  # entered in the Render dashboard, never committed
+      - key: RATE_LIMIT_PER_IP_PER_HOUR
+        value: "20"
+      - key: RATE_LIMIT_GLOBAL_PER_DAY
+        value: "500"

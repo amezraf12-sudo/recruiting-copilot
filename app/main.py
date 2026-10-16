@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 
 from app.core.errors import register_error_handlers
 from app.core.llm import create_extractor
@@ -21,6 +22,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Recruiting Copilot API", version="0.1.0", lifespan=lifespan)
 register_error_handlers(app)
 app.include_router(recruiting_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root() -> RedirectResponse:
+    # The interactive API docs double as the demo page.
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

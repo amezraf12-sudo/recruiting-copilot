@@ -48,6 +48,16 @@ copy .env.example .env          # then add your OPENROUTER_API_KEY (or switch to
 uvicorn app.main:app --reload   # interactive docs at http://localhost:8000/docs
 ```
 
+## Deploy (Render, free tier)
+
+1. Render dashboard → **New → Blueprint** → select this repo (`render.yaml` configures it).
+2. Enter `OPENROUTER_API_KEY` when prompted. Use a dedicated key with a credit limit.
+3. The root URL opens the interactive demo (`/docs`).
+
+The public demo is protected by rate limiting (`app/core/rate_limit.py`): 20 LLM requests
+per visitor per hour and 500 per day overall, configurable via environment variables.
+Free instances sleep when idle, so the first request after a while takes ~30-60 s.
+
 ## LLM providers
 
 Set `LLM_PROVIDER` in `.env`:

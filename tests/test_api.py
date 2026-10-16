@@ -1,11 +1,13 @@
 """API tests with a fake extractor: fast, free, and no API key needed."""
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from app.core.deps import get_extractor
 from app.core.errors import LLMRefusalError
 from app.core.llm import ExtractionResult
+from app.core.rate_limit import RateLimiter, client_ip, rate_limit
 from app.core.schemas import UsageInfo
 from app.domains.recruiting.schemas import ResumeExtraction, SenioritySignals, WorkExperience
 from app.main import app
@@ -58,8 +60,15 @@ class FakeExtractor:
 
 @pytest.fixture
 def client_with():
-    def _make(extractor):
+    def _make(extractor, limiter: RateLimiter | None = None):
         app.dependency_overrides[get_extractor] = lambda: extractor
+        # Rate limiting is tested on its own; other tests get a fresh, generous limiter.
+        fresh = limiter or RateLimiter(per_ip_per_hour=1000, global_per_day=1000)
+
+        def limited(request: Request) -> None:
+            fresh.check(client_ip(request))
+
+        app.dependency_overrides[rate_limit] = limited
         return TestClient(app)  # no `with` -> lifespan (real client) doesn't start
 
     yield _make
@@ -68,6 +77,21 @@ def client_with():
 
 def test_health(client_with):
     assert client_with(FakeExtractor()).get("/health").json() == {"status": "ok"}
+
+
+def test_root_redirects_to_docs(client_with):
+    resp = client_with(FakeExtractor()).get("/", follow_redirects=False)
+    assert resp.status_code in (302, 307)
+    assert resp.headers["location"] == "/docs"
+
+
+def test_rate_limit_returns_429_and_skips_llm(client_with):
+    fake = FakeExtractor()
+    client = client_with(fake, RateLimiter(per_ip_per_hour=2, global_per_day=100))
+    codes = [client.post("/recruiting/parse-resume", json={"text": RESUME_TEXT}).status_code
+             for _ in range(3)]
+    assert codes == [200, 200, 429]
+    assert len(fake.calls) == 2  # the blocked request never reached the LLM
 
 
 def test_parse_text_returns_profile_and_computed_years(client_with):

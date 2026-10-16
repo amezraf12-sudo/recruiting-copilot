@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from app import config
 from app.core.deps import get_extractor
 from app.core.llm import Extractor
+from app.core.rate_limit import rate_limit
 from app.domains.recruiting.schemas import ParsedResume, ResumeTextRequest
 from app.domains.recruiting.service import parse_resume
 
-router = APIRouter(prefix="/recruiting", tags=["recruiting"])
+# Every route here calls the LLM, so every route is rate limited.
+router = APIRouter(prefix="/recruiting", tags=["recruiting"], dependencies=[Depends(rate_limit)])
 
 
 @router.post("/parse-resume", response_model=ParsedResume)
