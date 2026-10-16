@@ -1,0 +1,15 @@
+Machine Learning Engineer — Computer Vision (Melbourne or Remote, Australia)
+
+Join our applied ML team building retail analytics from in-store camera feeds.
+
+What you need:
+- 3+ years of experience building and shipping ML models
+- Python and PyTorch (required)
+- SQL for data analysis (required)
+
+Bonus points:
+- Docker
+- FastAPI or another Python web framework for model serving
+- Experience with computer vision
+
+You'll train, evaluate and deploy models, and own parts of our evaluation framework.

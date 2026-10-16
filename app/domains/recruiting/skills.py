@@ -29,9 +29,17 @@ _ALIASES = {
 }
 
 
+# Trailing words that describe what a skill is rather than which skill it is. Seen in a
+# screening eval: a job asked for "Greenhouse ATS" and the resume said "Greenhouse".
+_GENERIC_SUFFIXES = {"ats", "framework", "library", "platform", "language", "database"}
+
+
 def _key(skill: str) -> str:
     s = skill.lower().replace("+", "plus").replace("#", "sharp")
-    s = re.sub(r"[^a-z0-9]", "", s)
+    words = [w for w in re.split(r"[^a-z0-9]+", s) if w]
+    if len(words) > 1 and words[-1] in _GENERIC_SUFFIXES:
+        words = words[:-1]
+    s = "".join(words)
     return _ALIASES.get(s, s)
 
 

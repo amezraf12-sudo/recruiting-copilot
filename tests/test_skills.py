@@ -7,13 +7,16 @@ from tests.factories import profile
 @pytest.mark.parametrize(
     "a,b",
     [("PostgreSQL", "postgres"), ("Node.js", "NodeJS"), ("Next.js", "nextjs"), ("Go", "Golang"),
-     ("Kubernetes", "k8s"), ("React", "React.js"), ("scikit-learn", "sklearn"), ("AWS", "aws")],
+     ("Kubernetes", "k8s"), ("React", "React.js"), ("scikit-learn", "sklearn"), ("AWS", "aws"),
+     ("Greenhouse ATS", "Greenhouse"), ("Django framework", "Django"), ("Google Cloud Platform", "GCP")],
 )
 def test_aliases_share_a_key(a, b):
     assert skill_key(a) == skill_key(b)
 
 
-@pytest.mark.parametrize("a,b", [("C++", "C"), ("C#", "C"), ("Java", "JavaScript")])
+@pytest.mark.parametrize(
+    "a,b", [("C++", "C"), ("C#", "C"), ("Java", "JavaScript"), ("Stats", "St"), ("ATS", "")]
+)
 def test_different_skills_stay_different(a, b):
     assert skill_key(a) != skill_key(b)
 

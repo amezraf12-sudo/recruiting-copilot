@@ -62,6 +62,25 @@ FLAGGED: "Female, 25-35 years old, single, with pleasing personality"
 4.   0  patricia-recruiter    8.42y  missing all 5 (8 years as a recruiter earns nothing here)
 ```
 
+### Screening eval
+
+`python -m evals.recruiting.run_screen_eval` scores rankings for 4 jobs (full-stack PH,
+Go backend, ML engineer, talent acquisition) over all 8 resumes against hand-graded relevance
+labels (`evals/recruiting/screen_cases.json`), and runs a counterfactual fairness test: the
+same resume with a different name (Maria → John) and a different school (PUP → Stanford) goes
+through the full pipeline, LLM included, and must get an identical score.
+
+| Date | Model | Correct #1 | NDCG@3 | Irrelevant < 20 | Must-have recall | Bias flags | Fairness | Runs |
+|------|-------|-----------|--------|-----------------|------------------|------------|----------|------|
+| 2026-10-16 | openai/gpt-4o-mini | 100% | 1.00 | 98.6% | 91.7% | 83.3% | 100% | 3 |
+| 2026-10-16 | openai/gpt-4o-mini, after fixes | **100%** | **1.00** | **100%** | **100%** | **100%** | **100%** | 3 |
+
+Fixes from the first run: generic suffixes ignored in skill matching ("Greenhouse ATS" =
+"Greenhouse"), and flags quoted one requirement at a time (the model had flagged a legitimate
+night-shift requirement together with age and gender). The irrelevant-score threshold was not
+changed; a QA tester with 1 of 3 required ML skills scores 17-23 across runs, ranked below
+the partial-fit candidate. 14 LLM calls per run.
+
 **Known limitation:** skill matching is exact (with aliases such as Postgres → PostgreSQL), so
 "recruitment software" doesn't match a resume describing an applicant tracking system.
 Semantic matching (embeddings) is the next step.

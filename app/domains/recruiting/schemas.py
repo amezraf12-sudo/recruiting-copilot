@@ -128,10 +128,15 @@ class JobRequirements(BaseModel):
     responsibilities: list[str] = Field(description="Main duties, concise.")
     location: str | None = Field(description="Work location if stated. Null otherwise.")
     remote: bool | None = Field(description="True if remote is allowed. Null if not stated.")
+    # Seen in a screening eval: a model returned "Must be 23-32 years old and willing to
+    # work night shift; male applicants preferred" as one item, flagging the legitimate
+    # night-shift requirement along with age and gender.
     flagged_requirements: list[str] = Field(
         description="Requirements about age, gender, civil status, religion, ethnicity, "
-        "nationality, height/weight, appearance or photos, quoted as written. These are "
-        "never used for screening."
+        "nationality, height/weight, appearance or photos. One item per requirement, "
+        "quoting only the discriminatory part (e.g. '23-32 years old', 'male applicants "
+        "preferred'); legitimate requirements in the same sentence stay out of this list. "
+        "These are never used for screening."
     )
 
 

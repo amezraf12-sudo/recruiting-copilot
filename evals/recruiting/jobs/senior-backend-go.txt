@@ -1,0 +1,17 @@
+Senior Backend Engineer, Payments Platform (Remote, APAC time zones)
+
+We're a fintech startup processing payments across Southeast Asia, looking for a senior
+backend engineer to own core services.
+
+Requirements:
+- 5+ years of backend engineering experience
+- Strong Go experience in production
+- PostgreSQL schema design and query optimization
+- Running services on Kubernetes
+
+Nice to have:
+- gRPC
+- Terraform
+- Redis
+
+You will own the payments ledger service end to end, including on-call.
