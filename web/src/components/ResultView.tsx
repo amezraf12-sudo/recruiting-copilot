@@ -1,11 +1,24 @@
+"use client";
+
+import { useState } from "react";
+
 import type { ScreenResult } from "@/lib/api";
 import { CandidateCard } from "./CandidateCard";
 import { Chip } from "./Chip";
+import { ResumeDrawer, type ResumeSource } from "./ResumeDrawer";
 
 const WORK_ARRANGEMENT_LABELS = { onsite: "On-site", hybrid: "Hybrid", remote: "Remote" } as const;
 
-export function ResultView({ result }: { result: ScreenResult }) {
+export function ResultView({
+  result,
+  sources,
+}: {
+  result: ScreenResult;
+  sources: Record<string, ResumeSource>;
+}) {
   const { job, ranking, errors, usage } = result;
+  const [viewing, setViewing] = useState<string | null>(null);
+  const viewed = ranking.find((m) => m.candidate_id === viewing);
 
   return (
     <section className="space-y-6" aria-live="polite">
@@ -61,7 +74,8 @@ export function ResultView({ result }: { result: ScreenResult }) {
         </h2>
         <ol className="space-y-3">
           {ranking.map((m, i) => (
-            <CandidateCard key={m.candidate_id} match={m} rank={i + 1} />
+            <CandidateCard key={m.candidate_id} match={m} rank={i + 1}
+              onView={() => setViewing(m.candidate_id)} />
           ))}
         </ol>
       </div>
@@ -70,6 +84,11 @@ export function ResultView({ result }: { result: ScreenResult }) {
         <div className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
           Couldn&apos;t read: {errors.map((e) => `${e.candidate_id} (${e.error})`).join(", ")}
         </div>
+      )}
+
+      {viewed && (
+        <ResumeDrawer match={viewed} job={job} source={sources[viewed.candidate_id]}
+          onClose={() => setViewing(null)} />
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">

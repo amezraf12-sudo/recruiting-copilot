@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ApiError, type ScreenResult, screenFiles, screenTexts } from "@/lib/api";
 import samples from "@/lib/samples.json";
 import { AssistantPanel } from "./AssistantPanel";
+import type { ResumeSource } from "./ResumeDrawer";
 import { ResultView } from "./ResultView";
 
 const MAX_FILES = 10;
@@ -12,6 +13,23 @@ const MIN_JOB_CHARS = 50;
 const WAKE_UP_HINT_AFTER_S = 12;
 
 type Source = "samples" | "upload";
+
+/**
+ * Original resumes keyed by the candidate ids the API assigns to uploads: the file name,
+ * with " (2)", " (3)"... for duplicates (same rule as /recruiting/screen/upload).
+ * The files stay in the browser; nothing here is stored or sent again.
+ */
+async function uploadSources(files: File[]): Promise<Record<string, ResumeSource>> {
+  const out: Record<string, ResumeSource> = {};
+  for (const [i, file] of files.entries()) {
+    const base = file.name || `resume-${i + 1}`;
+    let id = base;
+    for (let n = 2; id in out; n++) id = `${base} (${n})`;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    out[id] = isPdf ? { kind: "pdf", file } : { kind: "text", text: await file.text(), name: file.name };
+  }
+  return out;
+}
 
 export function Screener() {
   const [jobText, setJobText] = useState(samples.jobs[0].text);
@@ -22,6 +40,7 @@ export function Screener() {
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScreenResult | null>(null);
+  const [sources, setSources] = useState<Record<string, ResumeSource>>({});
   const [screenRun, setScreenRun] = useState(0);
 
   useEffect(() => {
@@ -55,6 +74,11 @@ export function Screener() {
         source === "samples"
           ? await screenTexts(jobText, samples.resumes)
           : await screenFiles(jobText, files);
+      setSources(
+        source === "samples"
+          ? Object.fromEntries(samples.resumes.map((r) => [r.id, { kind: "text", text: r.text } as const]))
+          : await uploadSources(files),
+      );
       setResult(res);
       setScreenRun((n) => n + 1);
     } catch (e) {
@@ -146,8 +170,9 @@ export function Screener() {
             </label>
           )}
           <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-            Uploaded resumes are processed by an LLM provider and not stored by this demo. Please
-            don&apos;t upload other people&apos;s resumes without their consent.
+            Uploaded resumes are processed by an LLM provider. This demo has no database; parsed
+            results are kept only in server memory until it restarts. Please don&apos;t upload
+            other people&apos;s resumes without their consent.
           </p>
         </section>
       </div>
@@ -175,7 +200,7 @@ export function Screener() {
         </div>
       )}
 
-      {result && <ResultView result={result} />}
+      {result && <ResultView result={result} sources={sources} />}
       {/* keyed by run, so a new screen starts a fresh conversation */}
       {result && result.ranking.length > 0 && <AssistantPanel key={screenRun} screen={result} />}
     </div>

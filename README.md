@@ -47,6 +47,11 @@ resumes ─────LLM──► ParsedResume (profile, computed years, compu
         ranking: all must-haves first, then score · matched/missing skills · reasons
 ```
 
+**Check the AI's reading:** in the web app, *View resume* opens each candidate's parsed
+profile next to the original (PDF, or text with required skills, bonus skills and suggestion
+evidence highlighted). The original files stay in the browser. The API has no database: it
+keeps parsed results only in its in-memory consistency cache, which is cleared on restart.
+
 **Fair by design:** scoring never uses name, school, location or photos. Requirements about
 age, gender, civil status, height or appearance (common in PH job ads) are extracted into
 `flagged_requirements` for the recruiter to review, never used as criteria.

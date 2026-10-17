@@ -23,9 +23,28 @@ export interface SemanticEvidence {
   evidence: string;
 }
 
+export interface WorkExperience {
+  company: string;
+  title: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  highlights: string[];
+}
+
+/** Work history only: the API never returns contact details or protected attributes. */
+export interface CandidateSummary {
+  headline: string;
+  technical_skills: string[];
+  soft_skills: string[];
+  experience: WorkExperience[];
+  certifications: string[];
+}
+
 export interface CandidateMatch {
   candidate_id: string;
   full_name: string | null;
+  summary: CandidateSummary;
   score: number;
   meets_all_must_haves: boolean;
   matched_must_haves: string[];

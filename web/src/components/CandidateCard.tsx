@@ -11,7 +11,15 @@ function scoreTone(score: number) {
   return "bg-slate-400";
 }
 
-export function CandidateCard({ match, rank }: { match: CandidateMatch; rank: number }) {
+export function CandidateCard({
+  match,
+  rank,
+  onView,
+}: {
+  match: CandidateMatch;
+  rank: number;
+  onView: () => void;
+}) {
   const [open, setOpen] = useState(rank === 1);
   const name = match.full_name || match.candidate_id;
 
@@ -71,14 +79,20 @@ export function CandidateCard({ match, rank }: { match: CandidateMatch; rank: nu
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            className="mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
-            aria-expanded={open}
-          >
-            {open ? "Hide" : "Show"} why this score
-          </button>
+          <div className="mt-3 flex flex-wrap gap-4 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+              aria-expanded={open}
+            >
+              {open ? "Hide" : "Show"} why this score
+            </button>
+            <button type="button" onClick={onView}
+              className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+              View resume
+            </button>
+          </div>
           {open && (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
               {match.reasons.map((r) => (
